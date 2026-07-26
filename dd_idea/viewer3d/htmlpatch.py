@@ -75,8 +75,9 @@ def html_with_camera_events(html: str) -> str:
       a still-hidden `frameA` and observing it simply never run, while a
       `setTimeout` scheduled the same way fired immediately.
     - Listens for a `{plviewerDoResize: true}` message and calls
-      `resize()`+`render()` in response -- `frontend/index.html` sends
-      this right after actually making the frame visible (toggling
+      `resize()`+`render()` in response, saving/restoring `getView()`
+      immediately around the `resize()` call -- `frontend/index.html`
+      sends this right after actually making the frame visible (toggling
       `.active`). A resize attempted any earlier (e.g. from this same
       script, right before reporting ready) reads the *still-hidden*
       frame's containing div at its current 0 width/height and leaves a
@@ -85,7 +86,14 @@ def html_with_camera_events(html: str) -> str:
       that size on its own -- confirmed live: calling `resize()` while
       still hidden left a 0x0 canvas even though the div itself already
       reported its correct (later) size, while calling it again after the
-      frame actually became visible fixed the canvas immediately.
+      frame actually became visible fixed the canvas immediately. The
+      save/restore around it is defensive: 3Dmol.js's own `resize()` only
+      updates the renderer size and the camera's aspect ratio/projection
+      matrix in its own source (no camera position/rotation touched), but
+      a live comparison across a real widget interaction still showed the
+      reported `getView()` drifting slightly after a resize -- cheap
+      enough to guard against unconditionally rather than track down
+      exactly which internal path causes it.
 
     Both are harmless no-ops if nothing is listening (e.g. a plain
     `st.iframe` embed, or Jupyter).
@@ -104,7 +112,12 @@ try {{
   document.addEventListener('touchend', __plvSave);
   window.addEventListener('message', function(event) {{
     if (event.data && event.data.plviewerDoResize) {{
-      try {{ {viewer_var}.resize(); {viewer_var}.render(); }} catch (e) {{}}
+      try {{
+        var __preResizeView = {viewer_var}.getView();
+        {viewer_var}.resize();
+        {viewer_var}.setView(__preResizeView);
+        {viewer_var}.render();
+      }} catch (e) {{}}
     }}
   }});
 }} catch (e) {{}}
