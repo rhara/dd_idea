@@ -60,11 +60,17 @@ is what gets translated across proteins.
   shown), Candidates (only shown if `candidates.json` exists in the report
   directory -- the ranked output of a prior `--discover` run). Every real
   RCSB structure a protein has (see "Real-structure overlay" below) gets
-  its own checkbox, nested under that protein's own in the "Proteins to
-  show" sidebar list -- shown/hidden independently of its AlphaFold model
-  and of each other, drawn as a solid, distinctly-colored cartoon with its
-  own bound ligand as sticks in the same color (see the color swatches in
-  the caption above the 3D view).
+  its own checkbox, collapsed by default behind a `"N real structure(s)"`
+  expander nested under that protein's own entry in the "Proteins to
+  show" sidebar list (a well-studied protein can have dozens of these
+  even after `--pdb-max-structures`/`--pdb-resolution-cutoff` filtering,
+  e.g. CDK2 -- a flat, always-open list that long buries every other
+  protein's own controls below the fold) -- shown/hidden independently of
+  its AlphaFold model and of each other, drawn as a solid,
+  distinctly-colored cartoon with its own bound ligand as sticks in a
+  fixed magenta (not the cartoon's own color -- see "Real-structure
+  overlay" below for why) so the ligand itself stays easy to spot
+  regardless of which structure it's in.
 
 ## Worked example: CDK20 vs. CDK2 vs. MAK
 
@@ -414,17 +420,20 @@ streamlit run app.py -- --report-dir CDK20_inhibition/cross_protein_comparison
 ```
 
 Open the **Structure overlay** tab. In the sidebar's "Proteins to show"
-list, each real structure gets its own indented checkbox under its
-protein's (e.g. `6Q4G (HJK, 0.98Å)` indented under `P24941`), independent
-of that protein's own AlphaFold checkbox and of its other real structures
--- check as many or as few as you want to compare at once. Each shown
-structure is drawn as a solid cartoon in its own distinct color (cartoon
-and bound-ligand sticks alike, cycled from a palette with no black/gray
--- achromatic colors are hard to read), a colored swatch in the caption
-above the 3D view identifies which color is which PDB ID/ligand -- a
-direct visual check of whether the reference's
-mapped pocket residues line up with where several different real, known
-ligands actually sit. The caption also names which proteins (CDK20, MAK)
+list, expand `P24941`'s `"3 real structure(s)"` expander to get to its
+per-structure checkboxes (e.g. `6Q4G (HJK, 0.98Å)`), independent of that
+protein's own AlphaFold checkbox and of its other real structures --
+check as many or as few as you want to compare at once. Each shown
+structure is drawn as a solid cartoon in its own distinct color (cycled
+from a palette with no black/gray -- achromatic colors are hard to
+read); every bound ligand, regardless of which structure it came from,
+is drawn in a fixed magenta so "where's the ligand" reads at a glance
+instead of blending into whichever cartoon color that structure happened
+to get. A colored swatch in the caption above the 3D view identifies
+which cartoon color is which PDB ID -- a direct visual check of whether
+the reference's mapped pocket residues line up with where several
+different real, known ligands actually sit. The caption also names which
+proteins (CDK20, MAK)
 had no RCSB structure at all. The 3D view's camera position is preserved
 across every checkbox toggle (it only resets on "Reset view"), so
 switching which structures are shown never disrupts a comparison you're
