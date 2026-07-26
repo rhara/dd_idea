@@ -191,7 +191,7 @@ def build_overlay_view(
 
         site = s.get("site_resseqs")
         if site:
-            stick_radius = 0.18 if kind == "pdb" else 0.25
+            stick_radius = 0.12 if kind == "pdb" else 0.17
             view.addStyle(
                 {"model": model_index, "chain": s["chain_id"], "resi": list(site)},
                 {"stick": {"colorscheme": _carbon_tint_scheme(SITE_COLOR), "radius": stick_radius}},

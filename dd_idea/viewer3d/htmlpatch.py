@@ -60,6 +60,19 @@ def html_with_camera_events(html: str) -> str:
       which structures are shown) would fall through to that new scene's
       own default `zoomTo()` fit instead, visibly reframing the camera even
       though the user never touched it.
+    - Also polls and reports on a 250ms `setInterval`, not just on
+      `mouseup`/`wheel`/`touchend`. A drag that ends with the mouse button
+      released *outside* this iframe's own rectangle -- easy to do with a
+      compact viewer next to a sidebar -- fires that `mouseup` in a
+      different document entirely (the parent page, or empty space beside
+      the canvas), which this iframe's own `mouseup` listener never sees;
+      `lastView` in the component then stays stuck on an older position
+      (whichever drag last happened to end cleanly inside the iframe, or
+      the initial default view if none ever did), and the *next* widget
+      interaction restores that stale view -- reading as "the camera reset"
+      even though the user did move it. The interval poll only posts when
+      `getView()` actually changed since the last report, so it's a no-op
+      once a drag settles.
     - Two ticks after the initial render (once the paint has actually
       landed), posts `{plviewerReady: true}` -- the signal the component
       waits for before swapping this scene into view (`frontend/index.html`
@@ -104,12 +117,27 @@ def html_with_camera_events(html: str) -> str:
     match = _VIEWER_RENDER_CALL.search(html)
     snippet = f"""
 try {{
+  var __plvLastJson = null;
   var __plvSave = function() {{
-    try {{ parent.postMessage({{plviewerCameraUpdate: true, view: {viewer_var}.getView()}}, "*"); }} catch (e) {{}}
+    try {{
+      var __v = {viewer_var}.getView();
+      var __j = JSON.stringify(__v);
+      if (__j === __plvLastJson) return;
+      __plvLastJson = __j;
+      parent.postMessage({{plviewerCameraUpdate: true, view: __v}}, "*");
+    }} catch (e) {{}}
   }};
   document.addEventListener('mouseup', __plvSave);
   document.addEventListener('wheel', __plvSave, {{passive: true}});
   document.addEventListener('touchend', __plvSave);
+  // Belt-and-suspenders for the above: a drag that ends with the mouse
+  // released outside this iframe's own rectangle never fires 'mouseup'
+  // here at all (it lands in a different document), so the 'mouseup'
+  // listener alone can miss a drag's final position entirely. Polling
+  // catches it within one tick regardless of where the button came up;
+  // the JSON-equality check above makes this a no-op once the camera
+  // settles, so it doesn't spam postMessage while idle.
+  setInterval(__plvSave, 250);
   window.addEventListener('message', function(event) {{
     if (event.data && event.data.plviewerDoResize) {{
       try {{
