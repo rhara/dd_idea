@@ -24,7 +24,9 @@ PALETTE = [
     "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
     "#8c564b", "#e377c2", "#20c997", "#bcbd22", "#17becf",
 ]
-REFERENCE_COLOR = "#444444"
+REFERENCE_COLOR = "#264653"  # dark teal -- distinct from PALETTE but, per the
+# achromatic-avoidance rule above, deliberately not gray/black either (the
+# original choice, "#444444", was)
 SITE_COLOR = "yellow"
 
 # Distinct hues from PALETTE (protein/AFDB cartoon colors) -- also no
@@ -72,8 +74,8 @@ def _readable_font_color(background_hex: str) -> str:
 
 def assign_colors(labels: Sequence[str], reference_label: str) -> Dict[str, str]:
     """One color per label, cycling through `PALETTE`; the reference always
-    gets the same neutral gray so it reads as "the reference", not just
-    another protein in the cycle. Duplicate labels (e.g. a protein's
+    gets the same fixed `REFERENCE_COLOR` so it reads as "the reference",
+    not just another protein in the cycle. Duplicate labels (e.g. a protein's
     AlphaFold entry and its own real-PDB-overlay entries, which
     deliberately share a label so they render in the same color) collapse
     to one color, not one each."""
