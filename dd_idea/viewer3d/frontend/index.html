@@ -75,11 +75,29 @@ function loadScene(html) {
   frames[targetKey].srcdoc = withCameraRestore(html);
 }
 
+function requestResize(key) {
+  if (!key) return;
+  frames[key].contentWindow.postMessage({plviewerDoResize: true}, "*");
+}
+
 function onSceneReady(key) {
   if (key !== pendingKey) return;
   pendingKey = null;
   var previousKey = activeKey;
   showFrame(key);
+  // The scene's own script (see htmlpatch.html_with_camera_events) can't
+  // reliably resize its WebGL canvas to fit before this point -- while
+  // frames[key] was still hidden (opacity: 0, pre-swap), its containing
+  // div read as 0 width/height, and 3Dmol.js never revisits a canvas size
+  // it already picked. Now that showFrame() just made it visible, ask it
+  // to resize for real. This alone isn't sufficient when the *whole
+  // component* is sitting inside a Streamlit tab that isn't the active one
+  // at the time this runs (a real case: the Structure overlay tab isn't
+  // selected on first load, so this component's own outer iframe -- not
+  // just frameA/frameB -- reads 0x0 here too) -- the ResizeObserver below
+  // covers that case by re-requesting a resize once the component's own
+  // container actually gets a real size, whenever that ends up happening.
+  requestResize(key);
   if (previousKey && previousKey !== key) {
     // Release the now-hidden frame's WebGL context/geometry once the
     // cross-fade finishes, so repeated swaps don't leak GL contexts.
@@ -88,6 +106,31 @@ function onSceneReady(key) {
     }, 250);
   }
 }
+
+// Covers the Streamlit-tab-not-yet-visible case above: this component's own
+// container has no size (e.g. an inactive `st.tabs()` pane), so neither the
+// initial resize request nor `.active`'s opacity flip -- both already
+// handled above -- can produce a correctly-sized canvas. Once the browser
+// actually lays this element out at a nonzero size (the user clicks the
+// tab), ask the currently-active frame to resize again. Polls on a plain
+// `setInterval`, not a `ResizeObserver` -- deliberately: a `ResizeObserver`
+// is itself driven by the same rendering-pipeline hook `requestAnimationFrame`
+// is, and this component's own outer iframe is exactly the "not currently
+// visible" case that hook gets throttled (in some environments, indefinitely)
+// for, confirmed live: a freshly-`observe()`d ResizeObserver here never fired
+// its callback even once -- not even the always-fires-immediately initial
+// report ResizeObserver normally guarantees -- while `stack`'s own
+// `getBoundingClientRect()` already reported the correct, later size the
+// whole time. `setInterval` doesn't share that dependency.
+var __lastPolledSize = {width: 0, height: 0};
+setInterval(function() {
+  var rect = document.getElementById("stack").getBoundingClientRect();
+  if (rect.width > 0 && rect.height > 0 &&
+      (rect.width !== __lastPolledSize.width || rect.height !== __lastPolledSize.height)) {
+    __lastPolledSize = {width: rect.width, height: rect.height};
+    requestResize(activeKey);
+  }
+}, 200);
 
 window.addEventListener("message", function(event) {
   var data = event.data || {};

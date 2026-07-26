@@ -60,10 +60,32 @@ def html_with_camera_events(html: str) -> str:
       which structures are shown) would fall through to that new scene's
       own default `zoomTo()` fit instead, visibly reframing the camera even
       though the user never touched it.
-    - Two animation frames after the initial render (once the paint has
-      actually landed), posts `{plviewerReady: true}` -- the signal the
-      component waits for before swapping this scene into view, so updates
-      read as a cross-fade instead of a flash to blank.
+    - Two ticks after the initial render (once the paint has actually
+      landed), posts `{plviewerReady: true}` -- the signal the component
+      waits for before swapping this scene into view (`frontend/index.html`
+      toggling its `.active` CSS class, which is what actually makes the
+      iframe visible), so updates read as a cross-fade instead of a flash
+      to blank. Uses `setTimeout`, not `requestAnimationFrame`, for those
+      two ticks -- deliberately: this snippet only ever runs inside
+      `frameA`/`frameB`, which start out hidden (`opacity: 0`, see
+      `frontend/index.html`) until the swap happens, and a hidden/
+      `display:none`-adjacent element is exactly the case some browsers
+      throttle `requestAnimationFrame` down to (in some environments,
+      effectively never firing) -- confirmed by directly scheduling one in
+      a still-hidden `frameA` and observing it simply never run, while a
+      `setTimeout` scheduled the same way fired immediately.
+    - Listens for a `{plviewerDoResize: true}` message and calls
+      `resize()`+`render()` in response -- `frontend/index.html` sends
+      this right after actually making the frame visible (toggling
+      `.active`). A resize attempted any earlier (e.g. from this same
+      script, right before reporting ready) reads the *still-hidden*
+      frame's containing div at its current 0 width/height and leaves a
+      0x0 canvas permanently, since `_make_html()`'s own inline script
+      creates the WebGL canvas once at load and 3Dmol.js never revisits
+      that size on its own -- confirmed live: calling `resize()` while
+      still hidden left a 0x0 canvas even though the div itself already
+      reported its correct (later) size, while calling it again after the
+      frame actually became visible fixed the canvas immediately.
 
     Both are harmless no-ops if nothing is listening (e.g. a plain
     `st.iframe` embed, or Jupyter).
@@ -80,13 +102,18 @@ try {{
   document.addEventListener('mouseup', __plvSave);
   document.addEventListener('wheel', __plvSave, {{passive: true}});
   document.addEventListener('touchend', __plvSave);
+  window.addEventListener('message', function(event) {{
+    if (event.data && event.data.plviewerDoResize) {{
+      try {{ {viewer_var}.resize(); {viewer_var}.render(); }} catch (e) {{}}
+    }}
+  }});
 }} catch (e) {{}}
-requestAnimationFrame(function() {{
-  requestAnimationFrame(function() {{
+setTimeout(function() {{
+  setTimeout(function() {{
     try {{ __plvSave(); }} catch (e) {{}}
     try {{ parent.postMessage({{plviewerReady: true}}, "*"); }} catch (e) {{}}
-  }});
-}});
+  }}, 0);
+}}, 0);
 """
     return html.replace(match.group(0), match.group(0) + snippet, 1)
 

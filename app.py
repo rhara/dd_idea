@@ -13,7 +13,7 @@ from pathlib import Path
 import streamlit as st
 
 from dd_idea import dashboard, scene
-from dd_idea.viewer3d import html_with_camera_events, view3d
+from dd_idea.viewer3d import html_fill_container, html_with_camera_events, view3d
 
 st.set_page_config(page_title="dd_idea", layout="wide")
 
@@ -104,7 +104,7 @@ def main() -> None:
                 # visually but a literal space run reads oddly in the source.
                 indent = " " * 8
                 st.checkbox(
-                    f"{indent}{pdb['pdb_id']} ({ligand_note}, {res_note})", value=True, key=f"show_pdb_{label}_{i}",
+                    f"{indent}{pdb['pdb_id']} ({ligand_note}, {res_note})", value=False, key=f"show_pdb_{label}_{i}",
                 )
         selected = [label for label in labels if st.session_state[f"show_prot_{label}"]]
         show_pocket = st.checkbox("Highlight reference pocket residues", value=True)
@@ -209,7 +209,7 @@ def main() -> None:
             st.info("No selected protein has a superposed coordinate file to show (all skipped during structural alignment?).")
         else:
             view = scene.build_overlay_view(scene_structures, reference_label=reference, label_residues=label_residues)
-            html = html_with_camera_events(view._make_html())
+            html = html_with_camera_events(html_fill_container(view._make_html()))
             view3d(html, height=650, reset_camera_token=st.session_state.camera_generation)
 
         skipped = [p for p in proteins if p["accession"] in selected and not p.get("aligned_pdb")]
