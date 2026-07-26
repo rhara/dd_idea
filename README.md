@@ -358,7 +358,15 @@ and best-resolution-fallback paths; `--pdb-scan-cap N` (default 25) caps
 how many resolution-ranked candidates get checked for a bound ligand, at
 most, before giving up on finding `--pdb-max-structures` of them and
 falling back to the single best-resolution one, for a target with
-hundreds of structures. `dd_idea-align` doesn't take any of these --
+hundreds of structures; `--pdb-allow-duplicate-ligands` keeps every
+ligand-bound entry meeting `--pdb-resolution-cutoff` instead of just one
+per distinct ligand (the default) -- combine with a large
+`--pdb-max-structures`/`--pdb-scan-cap` to actually collect e.g. "every
+sub-1.5Å structure regardless of how many share a ligand" (real example:
+for a CDK20/CDK5/CDK2/CDK7/CDK1/CDK9 comparison at a 1.5Å cutoff, CDK2
+alone yielded 32 structures out of 522 total RCSB entries, while
+CDK5/CDK7/CDK1/CDK9 had none meeting that bar at all even after scanning
+every one of their entries). `dd_idea-align` doesn't take any of these --
 it never makes RCSB network calls itself, only reusing whatever
 `dd_idea-fetch` already cached (see below).
 
