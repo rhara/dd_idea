@@ -8,17 +8,28 @@ import pandas as pd
 
 
 def overview_dataframe(report: dict) -> pd.DataFrame:
+    """`"% identity to reference"` is `None` (not the string `"(reference)"`)
+    for the reference row itself -- mixing a string into an otherwise-float
+    column makes pandas fall back to an `object` dtype, which Streamlit's
+    Arrow serialization can't always convert cleanly (surfaced as a "Expected
+    bytes, got a 'float' object" error, silently "fixed" by re-running the
+    whole script -- including rebuilding the Structure overlay tab's py3Dmol
+    scene from scratch, which defeats that scene's own resize-after-visible
+    fix in `viewer3d`). `"(reference)"` is folded into `Note` instead, kept
+    as a plain string column throughout."""
     reference = report["reference"]
     rows = []
     for p in report["proteins"]:
+        is_reference = p["accession"] == reference
+        note = "(reference)" if is_reference else (p["align_error"] or "")
         rows.append(
             {
                 "Accession": p["accession"],
                 "Name": p["name"],
                 "Length": p["length"],
-                "% identity to reference": "(reference)" if p["accession"] == reference else round(p["pct_identity"], 1),
+                "% identity to reference": None if is_reference else round(p["pct_identity"], 1),
                 "RMSD to reference (Å)": round(p["rmsd"], 3) if p["rmsd"] is not None else None,
-                "Note": p["align_error"] or "",
+                "Note": note,
             }
         )
     return pd.DataFrame(rows)
