@@ -13,7 +13,7 @@ from pathlib import Path
 import streamlit as st
 
 from dd_idea import dashboard, scene
-from dd_idea.viewer3d import html_fill_container, html_with_camera_events, view3d
+from dd_idea.viewer3d import html_fill_container, html_with_camera_events, html_with_initial_view, view3d
 
 st.set_page_config(page_title="dd_idea", layout="wide")
 
@@ -119,6 +119,7 @@ def main() -> None:
             st.session_state.camera_generation = 0
         if st.button("Reset view"):
             st.session_state.camera_generation += 1
+            st.session_state.camera_view = None
 
     candidates_path = Path(report_dir) / "candidates.json"
     tab_names = ["Overview", "Active-site comparison", "Structure overlay"]
@@ -213,9 +214,53 @@ def main() -> None:
         if not scene_structures:
             st.info("No selected protein has a superposed coordinate file to show (all skipped during structural alignment?).")
         else:
-            view = scene.build_overlay_view(scene_structures, reference_label=reference, label_residues=label_residues)
-            html = html_with_camera_events(html_fill_container(view._make_html()))
-            view3d(html, height=650, reset_camera_token=st.session_state.camera_generation)
+            # Rebuilt -- and re-baked with the latest known camera view --
+            # only when the *displayed content* actually changes, not on
+            # every rerun. This matters because `view3d`'s return value
+            # below feeds back into `st.session_state.camera_view`, which
+            # this same block bakes into the HTML: rebuilding unconditionally
+            # every run means a rerun triggered purely by the component
+            # reporting its own camera position sends back a *fresh* HTML
+            # string (`_make_html()` picks a new random viewer id every
+            # call regardless of content -- see `htmlpatch.get_viewer_
+            # variable`'s docstring), which the component always treats as
+            # a new scene to load, whose own initial-paint self-report
+            # triggers another rerun, forever -- confirmed live as a
+            # permanent back-and-forth between the correct camera position
+            # and the scene's own default fit that never settled. Reusing
+            # the exact same HTML string when nothing structural changed
+            # means the component's own `args.html !== currentHtml` check
+            # sees no change and does nothing, breaking that loop.
+            # `camera_generation` is part of the signature so "Reset view"
+            # (which bumps it and clears `camera_view`) still forces a
+            # fresh, un-rotated build rather than being cached away.
+            scene_signature = (
+                reference, label_residues, st.session_state.camera_generation,
+                tuple(
+                    (s["label"], s["pdb_path"], s["kind"], s.get("ligand_resname"), s.get("color"),
+                     tuple(s.get("site_resseqs") or ()))
+                    for s in scene_structures
+                ),
+            )
+            if st.session_state.get("scene_signature") != scene_signature:
+                view = scene.build_overlay_view(scene_structures, reference_label=reference, label_residues=label_residues)
+                html = html_with_camera_events(
+                    html_with_initial_view(html_fill_container(view._make_html()), st.session_state.get("camera_view"))
+                )
+                st.session_state.scene_signature = scene_signature
+                st.session_state.scene_html = html
+            else:
+                html = st.session_state.scene_html
+            # The component's return value is its own live-updated camera
+            # view (see `component.view3d`'s docstring for why this, not
+            # just the component's in-memory `lastView`, is what actually
+            # survives a widget-triggered rerun that tears the component's
+            # iframe down and recreates it). Stashed in session_state so the
+            # *next rebuild* above can bake it into a fresh scene's HTML
+            # before it ever reaches the browser.
+            reported_view = view3d(html, height=650, reset_camera_token=st.session_state.camera_generation)
+            if reported_view:
+                st.session_state.camera_view = reported_view
 
         skipped = [p for p in proteins if p["accession"] in selected and not p.get("aligned_pdb")]
         if skipped:

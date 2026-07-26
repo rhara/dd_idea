@@ -30,7 +30,7 @@ _FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "frontend")
 _component = components.declare_component("dd_idea_3d", path=_FRONTEND_DIR)
 
 
-def view3d(html: str, height: int = 650, key: str = "dd_idea_3d_view", reset_camera_token: int = 0) -> None:
+def view3d(html: str, height: int = 650, key: str = "dd_idea_3d_view", reset_camera_token: int = 0):
     """Embed a py3Dmol scene's HTML (typically already passed through
     `htmlpatch.html_with_camera_events`) via the double-buffered component.
 
@@ -41,5 +41,20 @@ def view3d(html: str, height: int = 650, key: str = "dd_idea_3d_view", reset_cam
     (falling back to the scene's own zoomTo fit) whenever it changes from
     the previous call -- wire it to e.g. a counter incremented by a "reset
     view" button.
+
+    Returns the latest reported camera view (a `getView()`-shaped list, or
+    `None` before the component has ever reported one) -- pass it back into
+    the *next* call's `html` via `htmlpatch.html_with_initial_view` before
+    calling this again. This isn't optional belt-and-suspenders: a live
+    comparison against a real multi-protein report showed Streamlit does
+    sometimes tear down and recreate this component's own outer iframe
+    (and with it, the in-memory `lastView`/`activeKey` its `frontend/
+    index.html` keeps alive across reruns to restore the camera) on an
+    ordinary widget-triggered rerun -- confirmed by a marker stashed on the
+    iframe's `contentWindow` disappearing across the rerun, and the next
+    scene coming back at its own default `zoomTo()` fit instead of the
+    camera position just set before that rerun. Feeding the view back in
+    from `st.session_state` through the HTML itself survives that
+    regardless of what the component's own JS memory does.
     """
-    _component(html=html, height=height, key=key, reset_token=reset_camera_token, default=None)
+    return _component(html=html, height=height, key=key, reset_token=reset_camera_token, default=None)

@@ -50,6 +50,8 @@ var pendingKey = null;     // buffer currently loading a new scene, awaiting its
 var currentHtml = null;    // last scene html we were asked to show (dedupe redundant reruns)
 var lastView = null;       // most recent camera state (3Dmol getView() array)
 var lastResetToken = null; // last-seen reset_token prop; a change clears lastView
+var __plvSendTimer = null; // debounce handle for the server-side setComponentValue report
+var __plvLastSentJson = null; // JSON of the last view actually sent via setComponentValue (breaks the report->rerun->fresh-scene->report loop -- see below)
 
 function otherKey(k) { return k === "A" ? "B" : "A"; }
 
@@ -153,6 +155,55 @@ window.addEventListener("message", function(event) {
   }
   if (data.plviewerCameraUpdate) {
     lastView = data.view;
+    // Also hand the view back to Python via the component's own return
+    // value (Streamlit.setComponentValue's raw postMessage form -- this
+    // component hand-rolls the protocol rather than pulling in
+    // streamlit-component-lib). This is the resilient path: `lastView`
+    // above only survives as long as this outer component iframe's own JS
+    // context does, and a live comparison against a real six-protein
+    // report showed Streamlit *does* sometimes tear down and recreate
+    // that iframe from scratch on an ordinary widget rerun (confirmed by
+    // a marker stashed on its `contentWindow` disappearing across the
+    // rerun) -- when that happens `lastView` here is gone too, and the
+    // next scene falls through to its own default `zoomTo()` fit. Storing
+    // the view server-side in `st.session_state` (see `app.py`) and
+    // baking it into the *next* scene's HTML via `html_with_initial_view`
+    // before it's ever sent to the browser survives that regardless of
+    // what this iframe's own JS memory does.
+    //
+    // Debounced, not sent on every update: `setComponentValue` is exactly
+    // what makes a custom component *interactive* in Streamlit -- every
+    // call whose value differs from the last schedules a full app rerun.
+    // The scene reports a change on every drag/zoom tick *and* every
+    // 250ms poll tick (see `htmlpatch.py`), so calling this unthrottled
+    // turned camera dragging into a rerun storm that visibly fought with
+    // itself (confirmed live: the component kept flipping back to a
+    // blank/loading buffer mid-drag). Only fire it 400ms after the *last*
+    // reported change, so one settled camera position produces one rerun
+    // -- same debounce shape as a search-as-you-type box.
+    //
+    // Also skip the call outright if this value is the same one we last
+    // actually sent: `app.py` calls `_make_html()` fresh on every rerun,
+    // which -- regardless of whether the *content* changed -- always picks
+    // a brand-new random `viewer_NNN` suffix (see `htmlpatch.get_viewer_
+    // variable`'s docstring), so the component always treats it as a
+    // genuinely new scene and reloads it. That reload's own initial-paint
+    // self-report (see `html_with_camera_events`) would otherwise feed the
+    // *same* view right back into this same handler, scheduling *another*
+    // send, causing another rerun, another fresh-suffix scene, another
+    // self-report -- a closed loop with no camera drag involved at all,
+    // confirmed live (the component kept reloading on its own with the
+    // debug session_state readout never advancing past the scene's
+    // *default* view). Comparing against the last value we actually
+    // dispatched (not just the last one seen) breaks that loop while still
+    // sending every genuinely new position exactly once.
+    var __plvJson = JSON.stringify(lastView);
+    if (__plvJson === __plvLastSentJson) return;
+    clearTimeout(__plvSendTimer);
+    __plvSendTimer = setTimeout(function() {
+      __plvLastSentJson = __plvJson;
+      sendToStreamlit("streamlit:setComponentValue", {value: lastView, dataType: "json"});
+    }, 400);
     return;
   }
   if (data.plviewerReady && event.source) {
