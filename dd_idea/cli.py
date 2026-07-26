@@ -50,6 +50,13 @@ def _add_pdb_fetch_args(parser: argparse.ArgumentParser) -> None:
              "(e.g. NMR), are skipped before download, for both the ligand-bound and best-resolution-fallback "
              "paths.",
     )
+    parser.add_argument(
+        "--pdb-allow-duplicate-ligands", action="store_true",
+        help="With PDB overlay enabled: keep every ligand-bound entry meeting --pdb-resolution-cutoff instead of "
+             "just one per distinct ligand (default: one per ligand, resolution-ranked-first-seen wins). Combine "
+             "with a large --pdb-max-structures/--pdb-scan-cap to actually collect e.g. every sub-1.5Å "
+             "structure regardless of how many share a ligand.",
+    )
 
 
 def build_fetch_parser() -> argparse.ArgumentParser:
@@ -128,6 +135,7 @@ def main_fetch(argv=None) -> None:
         args.accessions, args.out_dir, show_progress=not args.no_progress,
         pdb_overlay=not args.no_pdb_overlay, pdb_scan_cap=args.pdb_scan_cap,
         pdb_max_structures=args.pdb_max_structures, pdb_resolution_cutoff=args.pdb_resolution_cutoff,
+        pdb_dedupe_ligands=not args.pdb_allow_duplicate_ligands,
     )
     print(f"\n[done] {len(manifest['proteins'])} protein(s) -> {args.out_dir}")
 
@@ -148,6 +156,7 @@ def main_run(argv=None) -> None:
         args.accessions, args.out_dir, show_progress=not args.no_progress,
         pdb_overlay=not args.no_pdb_overlay, pdb_scan_cap=args.pdb_scan_cap,
         pdb_max_structures=args.pdb_max_structures, pdb_resolution_cutoff=args.pdb_resolution_cutoff,
+        pdb_dedupe_ligands=not args.pdb_allow_duplicate_ligands,
     )
     report = pipeline.analyze(
         args.out_dir, reference=args.reference, pocket_rank=args.pocket_rank, show_progress=not args.no_progress,

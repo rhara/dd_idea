@@ -36,7 +36,7 @@ def _read_fasta(path: Union[str, Path]) -> str:
 def fetch_all(
     accessions: Sequence[str], out_dir: Union[str, Path], *, show_progress: bool = True,
     pdb_overlay: bool = True, pdb_scan_cap: int = 25, pdb_max_structures: int = 3,
-    pdb_resolution_cutoff: float = 2.0,
+    pdb_resolution_cutoff: float = 2.0, pdb_dedupe_ligands: bool = True,
 ) -> dict:
     """Download every protein's canonical sequence + AlphaFold DB model,
     and (unless `pdb_overlay` is False) look up and select its real RCSB
@@ -46,7 +46,10 @@ def fetch_all(
     `pdb_max_structures` or loosening `pdb_resolution_cutoff` on a later
     call cheaply reuses whatever was already fetched and only spends new
     network time on the additional candidates needed to satisfy the wider
-    request."""
+    request. `pdb_dedupe_ligands=False` keeps every ligand-bound entry
+    meeting `pdb_resolution_cutoff` instead of one per distinct ligand --
+    combine with a large `pdb_max_structures`/`pdb_scan_cap` to actually
+    collect e.g. "every sub-1.5Å structure, duplicate ligands included"."""
     out_dir = Path(out_dir).resolve()
     raw_dir = out_dir / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
@@ -81,7 +84,7 @@ def fetch_all(
                 selections = rcsb.select_pdb_structures(
                     acc, canonical, out_dir / "raw_pdb", scan_cap=pdb_scan_cap,
                     max_structures=pdb_max_structures, resolution_cutoff=pdb_resolution_cutoff,
-                    show_progress=show_progress,
+                    dedupe_ligands=pdb_dedupe_ligands, show_progress=show_progress,
                 )
             except Exception as e:
                 if show_progress:

@@ -32,21 +32,26 @@ class SelectedPdbStructure:
 def select_pdb_structures(
     accession: str, canonical_seq: str, out_dir: Union[str, Path], *,
     scan_cap: int = 25, min_ligand_atoms: int = 5, max_structures: int = 3,
-    resolution_cutoff: float = 2.0, show_progress: bool = True,
+    resolution_cutoff: float = 2.0, dedupe_ligands: bool = True, show_progress: bool = True,
 ) -> List["SelectedPdbStructure"]:
     """Pick up to `max_structures` real PDB structures for `accession`,
     preferring ones with a genuine bound ligand (not water/cryoprotectant/
-    cofactor -- see `pdbio.classify_hetero_groups`), one per *distinct*
-    ligand (deduplicated by resname, resolution-ranked-first-seen wins) so
-    a target crystallized many times with the same fragment doesn't crowd
-    out other chemical matter. Falls back to a single best-resolution entry
-    overall if none of the (resolution-sorted) first `scan_cap` candidates
-    has a ligand at all. Returns `[]` if the accession has no RCSB
-    structures. Candidates are scanned cheapest-metadata-first and
-    downloaded/parsed for ligand content only as needed, stopping once
-    `max_structures` distinct ligands are found or `scan_cap` candidates
-    have been scanned -- a well-studied target (e.g. CDK2's 512 entries)
-    would otherwise mean downloading hundreds of structures.
+    cofactor -- see `pdbio.classify_hetero_groups`). By default
+    (`dedupe_ligands=True`) picks one per *distinct* ligand (deduplicated by
+    resname, resolution-ranked-first-seen wins) so a target crystallized
+    many times with the same fragment doesn't crowd out other chemical
+    matter -- set `dedupe_ligands=False` to keep every ligand-bound entry
+    that meets `resolution_cutoff`, including repeat entries for the same
+    ligand (e.g. wanting every sub-1.5Å structure regardless of how many
+    share a ligand). Falls back to a single best-resolution entry overall if
+    none of the (resolution-sorted) first `scan_cap` candidates has a ligand
+    at all. Returns `[]` if the accession has no RCSB structures. Candidates
+    are scanned cheapest-metadata-first and downloaded/parsed for ligand
+    content only as needed, stopping once `max_structures` entries are kept
+    or `scan_cap` candidates have been scanned -- a well-studied target
+    (e.g. CDK2's 512 entries) would otherwise mean downloading hundreds of
+    structures; pass a large `max_structures`/`scan_cap` explicitly to
+    actually collect that many.
 
     `resolution_cutoff` (Angstrom, lower is better -- 2.0 by default)
     excludes any candidate whose resolution is worse than this or entirely
@@ -84,7 +89,7 @@ def select_pdb_structures(
         groups = pdbio.classify_hetero_groups(pdbio.collect_hetero_groups(text))
         ligand = pdbio.pick_ligand_of_interest(groups, min_atoms=min_ligand_atoms)
         if ligand is not None:
-            if ligand.resname in seen_ligands:
+            if dedupe_ligands and ligand.resname in seen_ligands:
                 continue  # already have this ligand from a better-resolution entry; prefer diversity
             seen_ligands.add(ligand.resname)
             selections.append(_finalize_selection(accession, meta, dest, canonical_seq, ligand.resname, scanned))
