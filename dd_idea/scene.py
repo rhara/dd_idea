@@ -28,6 +28,13 @@ REFERENCE_COLOR = "#264653"  # dark teal -- distinct from PALETTE but, per the
 # achromatic-avoidance rule above, deliberately not gray/black either (the
 # original choice, "#444444", was)
 SITE_COLOR = "yellow"
+LIGAND_COLOR = "magenta"  # fixed, not cycled per-structure like PDB_PALETTE:
+# a bound ligand is the actual payoff of the real-structure overlay and
+# should read as "the ligand" at a glance regardless of which structure it
+# came from -- sharing its parent structure's own cartoon color (the
+# original behavior) made it blend in instead of standing out. Distinct
+# from SITE_COLOR (used for pocket-residue sticks) so the two don't get
+# confused when both are shown at once.
 
 # Distinct hues from PALETTE (protein/AFDB cartoon colors) -- also no
 # black/gray, same reasoning as above -- so a real structure's own color
@@ -160,9 +167,12 @@ def build_overlay_view(
     (`"afdb"`, the default, vs. `"pdb"` -- both render as a solid, fully
     opaque cartoon; `kind` only affects pocket-residue stick thickness and
     whether a bound ligand gets drawn, see below). For `kind="pdb"`
-    entries only: `ligand_resname` (drawn as sticks in the *same* `color`
-    as the entry's own cartoon, if given -- the actual payoff of
-    overlaying a real structure at all)."""
+    entries only: `ligand_resname` (drawn as sticks in the fixed
+    `LIGAND_COLOR`, not the entry's own cartoon `color`, if given -- the
+    actual payoff of overlaying a real structure at all; a fixed color
+    makes "where's the ligand" readable at a glance across every shown
+    structure, rather than blending in with whichever cartoon color that
+    structure happened to get)."""
     view = py3Dmol.view(width=width, height=height)
     colors = colors or assign_colors([s["label"] for s in structures], reference_label)
 
@@ -195,7 +205,7 @@ def build_overlay_view(
             if ligand_resname:
                 view.addStyle(
                     {"model": model_index, "resn": ligand_resname},
-                    {"stick": {"colorscheme": _carbon_tint_scheme(color), "radius": 0.3}},
+                    {"stick": {"colorscheme": _carbon_tint_scheme(LIGAND_COLOR), "radius": 0.35}},
                 )
 
     view.zoomTo()

@@ -95,16 +95,21 @@ def main() -> None:
                     st.session_state[f"show_pdb_{label}_{i}"] = False
         for label in labels:
             st.checkbox(label, value=True, key=f"show_prot_{label}")
-            for i, pdb in enumerate(by_label[label].get("pdb_structures") or []):
+            pdb_structures = by_label[label].get("pdb_structures") or []
+            if not pdb_structures:
+                continue
+            # Collapsed by default and behind an expander, not a flat
+            # indented checkbox list -- a well-studied protein (e.g. CDK2
+            # with hundreds of RCSB entries) can have dozens of these kept
+            # even after --pdb-max-structures/--resolution-cutoff filtering,
+            # and a flat list that long buries every other protein's own
+            # controls below the fold.
+            expander = st.expander(f"{len(pdb_structures)} real structure(s)", expanded=False)
+            for i, pdb in enumerate(pdb_structures):
                 ligand_note = pdb.get("ligand_resname") or "apo"
                 res_note = f"{pdb['resolution']:.2f}Å" if pdb.get("resolution") is not None else "n/a"
-                # " " (an actual non-breaking-space character, not the
-                # "&nbsp;" HTML entity) since st.checkbox's label doesn't
-                # render raw HTML -- plain leading spaces would also work
-                # visually but a literal space run reads oddly in the source.
-                indent = " " * 8
-                st.checkbox(
-                    f"{indent}{pdb['pdb_id']} ({ligand_note}, {res_note})", value=False, key=f"show_pdb_{label}_{i}",
+                expander.checkbox(
+                    f"{pdb['pdb_id']} ({ligand_note}, {res_note})", value=False, key=f"show_pdb_{label}_{i}",
                 )
         selected = [label for label in labels if st.session_state[f"show_prot_{label}"]]
         show_pocket = st.checkbox("Highlight reference pocket residues", value=True)
