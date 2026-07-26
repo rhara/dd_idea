@@ -36,24 +36,31 @@ def overview_dataframe(report: dict) -> pd.DataFrame:
 
 
 def pocket_comparison_frames(report: dict) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Two same-shape DataFrames (one row per reference pocket residue, one
-    column per protein): `values` (display string, e.g. `"Y81"` or `"-"`
-    for no counterpart) and `conservation` (the raw category, used to color
-    `values`'s cells in the Streamlit app -- see `app.py`'s `CONSERVATION_COLORS`)."""
+    """Two same-shape DataFrames (one row per protein, one column per
+    reference pocket residue -- proteins as rows rather than columns reads
+    each protein's own mapped residues left-to-right like a short sequence,
+    instead of top-to-bottom): `values` (display string, e.g. `"Y81"` or
+    `"-"` for no counterpart) and `conservation` (the raw category, used to
+    color `values`'s cells in the Streamlit app -- see `app.py`'s
+    `CONSERVATION_COLORS`)."""
     proteins = report["proteins"]
-    row_labels = [f"{c['reference_residue']}{c['reference_position']}" for c in proteins[0]["pocket_comparison"]]
+    col_labels = [f"{c['reference_residue']}{c['reference_position']}" for c in proteins[0]["pocket_comparison"]]
 
-    values = {}
-    conservation = {}
+    row_labels = []
+    values_rows = []
+    conservation_rows = []
     for p in proteins:
-        col = f"{p['accession']} ({p['name']})"
-        values[col] = [
+        row_labels.append(f"{p['accession']} ({p['name']})")
+        values_rows.append([
             f"{c['target_residue']}{c['target_position']}" if c["target_residue"] else "-"
             for c in p["pocket_comparison"]
-        ]
-        conservation[col] = [c["conservation"] for c in p["pocket_comparison"]]
+        ])
+        conservation_rows.append([c["conservation"] for c in p["pocket_comparison"]])
 
-    return pd.DataFrame(values, index=row_labels), pd.DataFrame(conservation, index=row_labels)
+    return (
+        pd.DataFrame(values_rows, index=row_labels, columns=col_labels),
+        pd.DataFrame(conservation_rows, index=row_labels, columns=col_labels),
+    )
 
 
 def candidates_dataframe(candidates_report: dict) -> pd.DataFrame:
