@@ -50,7 +50,9 @@ is what gets translated across proteins.
   list only -- run `--discover` separately first if you want suggestions).
 - **App (`streamlit run app.py -- --report-dir DIR`)**: four tabs --
   Overview (per-protein length/%identity/RMSD table), Active-site
-  comparison (the pocket-residue mapping table, colored by conservation),
+  comparison (the pocket-residue mapping table, colored by conservation --
+  one row per protein, one column per reference pocket residue, so each
+  protein's own mapped residues read left-to-right like a short sequence),
   Structure overlay (a double-buffered `view3d` component vendored and
   trimmed from the now-retired `dd_viewer` project -- every protein's
   AlphaFold model superposed,
@@ -429,7 +431,10 @@ from a palette with no black/gray -- achromatic colors are hard to
 read); every bound ligand, regardless of which structure it came from,
 is drawn in a fixed magenta so "where's the ligand" reads at a glance
 instead of blending into whichever cartoon color that structure happened
-to get. A colored swatch in the caption above the 3D view identifies
+to get -- deliberately thicker sticks than the reference pocket-residue
+highlights (also toggleable, see above), so a ligand always reads as the
+most visually prominent thing in the scene rather than competing with the
+highlights for attention. A colored swatch in the caption above the 3D view identifies
 which cartoon color is which PDB ID -- a direct visual check of whether
 the reference's mapped pocket residues line up with where several
 different real, known ligands actually sit. The caption also names which
