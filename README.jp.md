@@ -45,7 +45,7 @@ AlphaFold DBモデルを重ね合わせて、活性部位が実際どこでど�
 - **Run (`dd_idea-run`)**: fetch + align を1ステップで（明示的な
   アクセッションリストのみ対応——候補提案が欲しい場合は`--discover`を
   別途先に実行すること）。
-- **App (`streamlit run app.py -- --report-dir DIR`)**: 4タブ構成 --
+- **App (`streamlit run view.py -- --report-dir DIR`)**: 4タブ構成 --
   Overview（蛋白ごとの長さ／参照との同一性％／RMSDの表）、Active-site
   comparison（ポケット残基マッピング表、保存度で色分け——行=蛋白1つ、
   列=参照ポケット残基1つで、各蛋白自身にマッピングされた残基が左から右へ
@@ -55,7 +55,11 @@ AlphaFold DBモデルを重ね合わせて、活性部位が実際どこでど�
   重ね合わせ、それぞれ別の色で表示し、
   参照ポケット残基を各構造上にハイライト、各ポケット残基に任意でテキスト
   ラベルを表示——ハイライト・ラベルともサイドバーから個別にON/OFF可能で、
-  表示する蛋白の選択とは独立），Candidates（レポート
+  表示する蛋白の選択とは独立）。さらに、ポケットハイライトがONの場合に限り
+  「Show active site only（+shell）」トグルで、各構造のカートゥーン表示を
+  その構造自身のポケット残基を中心とした指定半径（デフォルト5Å、残基単位）
+  内だけに絞り込み、鎖全体を描画しないようにできる——複数の蛋白／構造を
+  またいで活性部位周辺だけに一気にズームインしたい場合に使う，Candidates（レポート
   ディレクトリに`candidates.json`が存在する場合のみ表示——事前の
   `--discover`実行結果のランキング）。ある蛋白が持つ実RCSB構造（下記
   「実構造オーバーレイ」参照）は、それぞれ専用のチェックボックスを持ち、
@@ -76,7 +80,7 @@ AlphaFold DBモデルを重ね合わせて、活性部位が実際どこでど�
 
 ```bash
 dd_idea-run Q8IZL9 P24941 P20794 -o CDK20_inhibition/cross_protein_comparison --reference Q8IZL9
-streamlit run app.py -- --report-dir CDK20_inhibition/cross_protein_comparison
+streamlit run view.py -- --report-dir CDK20_inhibition/cross_protein_comparison
 ```
 
 ヒトCDK20（Q8IZL9）には実験構造（PDB）が1件も無く、CDK2（P24941）は512件、
@@ -334,7 +338,7 @@ cd dd_idea && pip install --no-deps -e ".[app]"  # [app]でstreamlit/py3Dmolも�
 ```bash
 dd_idea-fetch --discover Q8IZL9 -o data/discover   # 任意: 1シードから候補提案
 dd_idea-run Q8IZL9 P24941 P20794 -o data --reference Q8IZL9
-streamlit run app.py -- --report-dir data
+streamlit run view.py -- --report-dir data
 ```
 
 `--reference`（デフォルト: 最初にfetchしたアクセッション）は、どの蛋白の
@@ -404,7 +408,7 @@ dd_idea-fetch Q8IZL9 P24941 P20794 -o data --pdb-max-structures 6
 不要で、そのままアプリを起動すればよい:
 
 ```bash
-streamlit run app.py -- --report-dir CDK20_inhibition/cross_protein_comparison
+streamlit run view.py -- --report-dir CDK20_inhibition/cross_protein_comparison
 ```
 
 **Structure overlay**タブを開く。サイドバー「Proteins to show」内で、

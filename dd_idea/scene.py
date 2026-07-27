@@ -142,7 +142,7 @@ def _add_site_labels(view: py3Dmol.view, pdb_path: str, chain_id: str, site_labe
 def build_overlay_view(
     structures: Sequence[dict], reference_label: str, *,
     colors: Optional[Dict[str, str]] = None, width: Union[int, str] = "100%", height: Union[int, str] = 600,
-    label_residues: bool = False,
+    label_residues: bool = False, context_radius: Optional[float] = None,
 ) -> py3Dmol.view:
     """`structures`: a flat list of independent entries to draw -- normally
     one `kind="afdb"` entry per shown protein (its AlphaFold model) plus
@@ -172,7 +172,16 @@ def build_overlay_view(
     actual payoff of overlaying a real structure at all; a fixed color
     makes "where's the ligand" readable at a glance across every shown
     structure, rather than blending in with whichever cartoon color that
-    structure happened to get)."""
+    structure happened to get).
+
+    `context_radius`: when given, each entry's cartoon is restricted to
+    residues within this many Angstroms of that entry's own
+    `site_resseqs` (whole residues, via 3Dmol's `byres`, so the cartoon
+    ribbon doesn't cut through a residue mid-way) instead of drawing the
+    full chain -- lets the caller zoom in on just the active site and its
+    immediate surroundings. An entry with no `site_resseqs` (e.g.
+    pocket highlighting turned off) falls back to drawing its full chain
+    regardless, since there's nothing to anchor a radius to."""
     view = py3Dmol.view(width=width, height=height)
     colors = colors or assign_colors([s["label"] for s in structures], reference_label)
 
@@ -187,9 +196,17 @@ def build_overlay_view(
         # falls back to a default line/wireframe rendering for any atom
         # left unstyled rather than hiding it.
         view.setStyle({"model": model_index}, {})
-        view.setStyle(chain_sel, {"cartoon": {"color": color}})
 
         site = s.get("site_resseqs")
+        if context_radius is not None and site:
+            cartoon_sel = {
+                "model": model_index, "chain": s["chain_id"], "byres": True,
+                "within": {"distance": context_radius, "sel": {**chain_sel, "resi": list(site)}},
+            }
+        else:
+            cartoon_sel = chain_sel
+        view.setStyle(cartoon_sel, {"cartoon": {"color": color}})
+
         if site:
             stick_radius = 0.12 if kind == "pdb" else 0.17
             view.addStyle(

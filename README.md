@@ -48,7 +48,7 @@ is what gets translated across proteins.
   cached.
 - **Run (`dd_idea-run`)**: fetch + align in one step (explicit accession
   list only -- run `--discover` separately first if you want suggestions).
-- **App (`streamlit run app.py -- --report-dir DIR`)**: four tabs --
+- **App (`streamlit run view.py -- --report-dir DIR`)**: four tabs --
   Overview (per-protein length/%identity/RMSD table), Active-site
   comparison (the pocket-residue mapping table, colored by conservation --
   one row per protein, one column per reference pocket residue, so each
@@ -59,7 +59,11 @@ is what gets translated across proteins.
   distinctly colored, reference pocket residues highlighted on each, with
   an optional text label per pocket residue -- toggle both the highlight
   and the labels from the sidebar, independent of which proteins are
-  shown), Candidates (only shown if `candidates.json` exists in the report
+  shown; a further "active site only" toggle, once the pocket highlight is
+  on, restricts every structure's cartoon to a chosen radius (default 5 Å,
+  whole residues) around that structure's own pocket residues instead of
+  drawing the full chain, for zooming straight in on the active site
+  across many proteins/structures at once), Candidates (only shown if `candidates.json` exists in the report
   directory -- the ranked output of a prior `--discover` run). Every real
   RCSB structure a protein has (see "Real-structure overlay" below) gets
   its own checkbox, collapsed by default behind a `"N real structure(s)"`
@@ -78,7 +82,7 @@ is what gets translated across proteins.
 
 ```bash
 dd_idea-run Q8IZL9 P24941 P20794 -o CDK20_inhibition/cross_protein_comparison --reference Q8IZL9
-streamlit run app.py -- --report-dir CDK20_inhibition/cross_protein_comparison
+streamlit run view.py -- --report-dir CDK20_inhibition/cross_protein_comparison
 ```
 
 Human CDK20 (Q8IZL9) has no experimental (PDB) structure at all; CDK2
@@ -345,7 +349,7 @@ This installs three console commands: `dd_idea-fetch`, `dd_idea-align`,
 ```bash
 dd_idea-fetch --discover Q8IZL9 -o data/discover   # optional: propose candidates for one seed
 dd_idea-run Q8IZL9 P24941 P20794 -o data --reference Q8IZL9
-streamlit run app.py -- --report-dir data
+streamlit run view.py -- --report-dir data
 ```
 
 `--reference` (default: the first accession fetched) picks which protein's
@@ -418,7 +422,7 @@ real-structure overlay for CDK2 -- three distinct ligand-bound structures
 -- no extra fetch needed, just open the app against it:
 
 ```bash
-streamlit run app.py -- --report-dir CDK20_inhibition/cross_protein_comparison
+streamlit run view.py -- --report-dir CDK20_inhibition/cross_protein_comparison
 ```
 
 Open the **Structure overlay** tab. In the sidebar's "Proteins to show"

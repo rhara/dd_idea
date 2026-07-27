@@ -1,8 +1,8 @@
 """Streamlit UI for dd_idea.
 
-Run with `streamlit run app.py -- --report-dir data` (after `dd_idea-run`/
+Run with `streamlit run view.py -- --report-dir data` (after `dd_idea-run`/
 `dd_idea-fetch`+`dd_idea-align` have populated that directory with
-`report.json` and `aligned/*_aligned.pdb`), or just `streamlit run app.py`
+`report.json` and `aligned/*_aligned.pdb`), or just `streamlit run view.py`
 and enter the directory in the sidebar.
 """
 import argparse
@@ -114,6 +114,14 @@ def main() -> None:
         selected = [label for label in labels if st.session_state[f"show_prot_{label}"]]
         show_pocket = st.checkbox("Highlight reference pocket residues", value=True)
         label_residues = st.checkbox("Show residue labels", value=True, disabled=not show_pocket)
+        context_only = st.checkbox(
+            "Show active site only (+ shell)", value=False, disabled=not show_pocket,
+            help="Hide each structure's cartoon outside a radius around its own pocket residues, "
+                 "instead of drawing the full chain.",
+        )
+        context_radius = st.slider(
+            "Shell radius (Å)", min_value=2.0, max_value=15.0, value=5.0, step=0.5, disabled=not context_only,
+        ) if context_only else None
 
         if "camera_generation" not in st.session_state:
             st.session_state.camera_generation = 0
@@ -235,7 +243,7 @@ def main() -> None:
             # (which bumps it and clears `camera_view`) still forces a
             # fresh, un-rotated build rather than being cached away.
             scene_signature = (
-                reference, label_residues, st.session_state.camera_generation,
+                reference, label_residues, context_radius, st.session_state.camera_generation,
                 tuple(
                     (s["label"], s["pdb_path"], s["kind"], s.get("ligand_resname"), s.get("color"),
                      tuple(s.get("site_resseqs") or ()))
@@ -243,7 +251,10 @@ def main() -> None:
                 ),
             )
             if st.session_state.get("scene_signature") != scene_signature:
-                view = scene.build_overlay_view(scene_structures, reference_label=reference, label_residues=label_residues)
+                view = scene.build_overlay_view(
+                    scene_structures, reference_label=reference, label_residues=label_residues,
+                    context_radius=context_radius,
+                )
                 html = html_with_camera_events(
                     html_with_initial_view(html_fill_container(view._make_html()), st.session_state.get("camera_view"))
                 )

@@ -1,5 +1,5 @@
 """Pandas DataFrame construction for the Streamlit Overview / Active-site
-comparison tabs (`app.py`)."""
+comparison tabs (`view.py`)."""
 from __future__ import annotations
 
 from typing import Tuple
@@ -41,7 +41,7 @@ def pocket_comparison_frames(report: dict) -> Tuple[pd.DataFrame, pd.DataFrame]:
     each protein's own mapped residues left-to-right like a short sequence,
     instead of top-to-bottom): `values` (display string, e.g. `"Y81"` or
     `"-"` for no counterpart) and `conservation` (the raw category, used to
-    color `values`'s cells in the Streamlit app -- see `app.py`'s
+    color `values`'s cells in the Streamlit app -- see `view.py`'s
     `CONSERVATION_COLORS`)."""
     proteins = report["proteins"]
     col_labels = [f"{c['reference_residue']}{c['reference_position']}" for c in proteins[0]["pocket_comparison"]]

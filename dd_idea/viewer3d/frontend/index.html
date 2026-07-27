@@ -166,7 +166,7 @@ window.addEventListener("message", function(event) {
     // a marker stashed on its `contentWindow` disappearing across the
     // rerun) -- when that happens `lastView` here is gone too, and the
     // next scene falls through to its own default `zoomTo()` fit. Storing
-    // the view server-side in `st.session_state` (see `app.py`) and
+    // the view server-side in `st.session_state` (see `view.py`) and
     // baking it into the *next* scene's HTML via `html_with_initial_view`
     // before it's ever sent to the browser survives that regardless of
     // what this iframe's own JS memory does.
@@ -183,7 +183,7 @@ window.addEventListener("message", function(event) {
     // -- same debounce shape as a search-as-you-type box.
     //
     // Also skip the call outright if this value is the same one we last
-    // actually sent: `app.py` calls `_make_html()` fresh on every rerun,
+    // actually sent: `view.py` calls `_make_html()` fresh on every rerun,
     // which -- regardless of whether the *content* changed -- always picks
     // a brand-new random `viewer_NNN` suffix (see `htmlpatch.get_viewer_
     // variable`'s docstring), so the component always treats it as a
